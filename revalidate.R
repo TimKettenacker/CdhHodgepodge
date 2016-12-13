@@ -1,5 +1,5 @@
 # iteratively execute a curl command to revalidate records in CDH
-# iteration frequency is based on records retrieved 
+# iteration frequency is based on records retrieved from elasticsearch
 
 # download packages and establish system connection
 require(elastic)
