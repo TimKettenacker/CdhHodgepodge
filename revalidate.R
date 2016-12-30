@@ -1,4 +1,7 @@
-# iteratively execute a curl command to revalidate records in CDH
+# place this file in C:\Program Files\R\"whatever R version is installed"\bin>
+# in the command prompt, go and run in C:\Program Files\R\"whatever R version is installed"\bin>r -f revalidate.R
+
+# iteratively execute curl commands to revalidate and update records in CDH
 # iteration frequency is based on records retrieved from elasticsearch
 
 # download packages and establish system connection
@@ -9,47 +12,49 @@ connect()
 
 # read in all zips from depots
 setwd("C:/Users/Administrator/Documents")
-file <- read.csv("Depot_PLZ_Zuordnung_20150504.csv", sep=";", colClasses = c("depot"="character", "postcode"="character"))
-
-# loop: send zip in a query to elastic
-#       compute count of Golden Records that match the query
+file <- read.csv("Depot_PLZ_Zuordnung_2016_12.csv", sep=";", colClasses = c("depot"="character", "postcode"="character"))
 total_count <- 0
+zip_collector <- list()
 
+# query all zips in file and count affected records
 for(zip in file[,1]){
-  match_frag1 <- '{ "query": { "bool" : { "must": { "prefix": { "_id" : "system" }}, "must": { "match": { "zip" : "'
-  match_frag2 <- '" } } } } }'
-  match <- paste0(match_frag1, zip, match_frag2, "")
-  #enter valid index name
-  res <- Search(index="customer-x01", body=match, scroll="5m", search_type = "scan")
-  out <- list()
-  hits <- 1
-  while(hits != 0){
-    res <- scroll(scroll_id = res$`_scroll_id`)
-    hits <- length(res$hits$hits)
-    if(hits > 0)
-      out <- c(out, res$hits$hits)
-  }
-  total_count <- total_count + length(out)
-  print(total_count)
-  if(total_count > 100000){
+  frag1_q <- '{ "query": { "match": { "zip": "'
+  frag2_q <- '"}}}'
+  match <- paste0(frag1_q, as.character(zip), frag2_q, "")
+  # choose a valid index name
+  res <- Search(index="customer-d01", body=match, scroll="5m", search_type = "scan")
+  total_count <- total_count + res$hits$total
+  zip_collector <- append(zip_collector, zip)
+  if(total_count > 350000){
     break
   }
-  # system call
-  shell(paste("cd",setwd("C:/uniserv/cdh/tools"),sep=" "))
-  Sys.sleep(3)
-  #enter valid curl command
-  shell(paste('curl.exe', ' -X', ' POST ', 'http://localhost:6441/current/database/xxx/_histname-update-batch?ZipCode=', as.character(zip), ' --data', ' " "', sep=""))
 }
-# change directory to file input
-setwd("C:/Users/Administrator/Documents")
+# write zips to file to be picked up by admin command
+print("Requested amount of zips has been fetched. Writing to file path now. Starting revalidation process.")
+Sys.sleep(2)
+df_zip_collector <- t(as.data.frame(zip_collector))
+out_file <- paste("C:\\uniserv\\cdh\\temp\\plzdelta\\delta.csv", sep="")
+write.csv2(df_zip_collector, out_file, row.names = FALSE, quote = FALSE)
+# adapt origin file so it will pick up correctly when program is scheduled 
 row_number_current_zip <- which(file$postcode == zip)
 outf.df <- slice(file, row_number_current_zip:length(file[,1]))
-out_file <- paste(getwd(), "/Depot_PLZ_Zuordnung_20150504.csv", sep="")
+setwd("C:/Users/Administrator/Documents")
+out_file <- paste(getwd(), "/Depot_PLZ_Zuordnung_2016_12.csv", sep="")
 write.csv2(outf.df, out_file, row.names = FALSE, quote = FALSE)
-print("that's all for today, folks!")
-
-
-
+# system command
+shell(paste("cd",setwd("C:/uniserv/cdh/tools"),sep=" "))
+Sys.sleep(2)
+# enter valid curl command
+shell(paste('curl.exe', ' -X', ' POST ', 'http://localhost:6441/current/database/xxx/_revalidate-by-zip?SingleCsv=C:\\uniserv\\cdh\\temp\\plzdelta\\delta.csv', ' --data', ' " "', sep=""))
+print("Revalidation of zip code has finished. Now starting to update historical names.")
+Sys.sleep(2)
+shell(paste("cd",setwd("C:/uniserv/cdh/tools"),sep=" "))
+# call update of historical names based on processed zips
+for(zip in zip_collector){
+  print(paste0("updating historical data to zip code ", as.character(zip), sep = ""))
+  shell(paste('curl.exe', ' -X', ' POST ', 'http://localhost:6441/current/database/dpd/_histname-update-batch?ZipCode=', as.character(zip), ' --data', ' " "', sep=""))
+}
+print("That's all for today folks!")
 
 
 
