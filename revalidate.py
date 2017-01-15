@@ -8,7 +8,7 @@ from elasticsearch import Elasticsearch
 es = Elasticsearch()
 
 # read in all zip files from depots
-os.chdir('C:\\Users\\admkett\\Documents')
+os.chdir('C:\\Users\\Administrator\\Documents')
 file = pandas.read_csv('Depot_PLZ_Zuordnung_2016_12.csv', sep = ';', converters={'depot': str, 'postcode': str})
 frag1 = '{"query": { "match": { "zip":"'
 frag2 = '"}}}'
@@ -38,7 +38,8 @@ pandas.DataFrame.to_csv(out_df, path_or_buf=path, index = False, encoding="UTF-8
 # invoke shell commands to call revalidation and update-histnames
 os.chdir("C:\\Uniserv\\cdh\\tools")
 os.system("admin help")
-os.system('curl.exe' + ' -X' + ' POST ' + 'http://localhost:6441/current/database/dpd/_revalidate-by-zip?SingleCsv=C:\\uniserv\\cdh\\temp\\plzdelta\\delta.csv' + ' --data' + ' " "')
+# choose valid command
+os.system('curl.exe' + ' -X' + ' POST ' + 'http://localhost:6441/current/database/xxx/_revalidate-by-zip?SingleCsv=C:\\uniserv\\cdh\\temp\\plzdelta\\delta.csv' + ' --data' + ' " "')
 print("Revalidation of zip code has finished. Starting to update historical names.")
 # choose valid command
 os.system('curl.exe' + ' -X' + ' POST ' + 'http://localhost:6441/current/database/xxx/_revalidate-by-zip?SingleCsv=C:\\uniserv\\cdh\\temp\\plzdelta\\delta.csv' + ' --data' + ' " "')
