@@ -44,19 +44,25 @@ for(i in 1:length(datetime)){
 
 time_interval <- list()
 for(n in 1:length(store_time)){
-  z <- store_time[[n+1]] - store_time[[n]]
-  time_interval <- append(time_interval, as.numeric(z))
+  tryCatch({
+    z <- store_time[[n+1]] - store_time[[n]]
+    time_interval <- append(time_interval, as.numeric(z))
+  }, error=function(e){cat(conditionMessage(e), " for the last time interval; this is logical, continue")})
 }
 
 # store all results in data frame
-keys[[i]] <- NULL
-df_timelapse <- data.frame(observation_point = 1:length(time_interval), keys = unlist(keys), time_interval = unlist(time_interval))
+time_interval[[i]] <- NA
+df_timelapse <- data.frame(observation_point = 1:length(datetime), keys = unlist(keys), datetime = unlist(datetime), time_interval = unlist(time_interval))
 
-# visualize elapsed time
+# visualize time intervals
 a <- ggplot(df_timelapse, aes(observation_point, time_interval))
 ggplotly(a + geom_line() + theme_bw() + xlab("number of processed records") + ylab("elapsed time between records in sec"))
 
-# write results to csv
-out_file <- paste(getwd(), "\\output.csv", sep="")
-write.csv2(df_timelapse, out_file, row.names = FALSE, quote = FALSE)
+# visualize density of time elapsed
+b <- ggplot(df_timelapse, aes(time_interval))
+ggplotly(b + geom_histogram(bins = 100, fill = "#0dc4b3") + theme_bw() + xlab("interval in s") + ylab("frequency"))
 
+# write results to csv
+out_file <- paste(getwd(), "\\log_assessment.csv", sep="")
+write.csv2(df_timelapse, out_file, row.names = FALSE, quote = FALSE)
+print(paste0("created csv in ", getwd()))
