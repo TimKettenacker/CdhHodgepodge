@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import pandas as pd, pymongo, datetime
 from pymongo import MongoClient
+from datetime import datetime
 
 # set up the connection
 password = 'thepassword'
